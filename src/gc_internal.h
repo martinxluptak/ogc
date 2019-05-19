@@ -1,13 +1,15 @@
 #ifndef GC_INTERNAL_H
 #define GC_INTERNAL_H
 
-#include <stdint.h>
+#include <pthread.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include "gc.h"
 
 #define PTR_MAP_SIZE 64
 #define HASH(ptr) ((uintptr_t) ptr >> 3)
+#define MAX_THR 100
 
 struct __gc_ptr {
     uintptr_t start;
@@ -23,7 +25,7 @@ struct __gc_list {
 typedef struct __gc_list gc_list_t;
 
 struct __gc {
-    void *stack_start;
+    void *stack_start[MAX_THR];
     gc_list_t *ptr_map[PTR_MAP_SIZE];
     size_t ptr_num;
     size_t limit;
@@ -35,6 +37,7 @@ typedef struct __gc gc_t;
 
 /* global GC object */
 extern gc_t __gc_object;
+extern pthread_mutex_t __gc_mutex;
 
 void gc_mark(uint8_t *s, uint8_t *e);
 void gc_sweep();

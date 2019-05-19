@@ -1,6 +1,7 @@
 CFLAGS := \
-	-Wall -std=c11 \
-	-I. -MMD
+	-Wall -std=c11 -g \
+	-I. -MMD \
+	-pthread
 
 OBJS := \
 	src/alloc.o \
@@ -12,7 +13,8 @@ deps := $(OBJS:%.o=%.d)
 
 TESTS := \
 	tests/dummy \
-	tests/string-separate
+	tests/string-separate \
+	tests/string-multi
 
 tests/%: tests/%.o
 	$(CC) $(CFLAGS) -o $@ $^ $(OBJS)
@@ -32,6 +34,7 @@ NO_COLOR = \e[0m
 tests/%.done: tests/%
 	@$(PRINTF) "*** Validating $< ***\n"
 	@./$< && $(PRINTF) "\t$(PASS_COLOR)[ Verified ]$(NO_COLOR)\n"
+	gdb ./$<
 check: $(OBJS) $(addsuffix .done, $(TESTS))
 
 clean:

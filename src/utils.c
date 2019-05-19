@@ -33,7 +33,9 @@ gc_list_t *gc_ptr_index(uintptr_t ptr)
 void gc_mark_stack(void)
 {
     uint8_t tmp;
-    gc_mark(__gc_object.stack_start, &tmp);
+    void *start = __gc_object.stack_start[pthread_self() % MAX_THR];
+    printf("start:%p\n", start);
+    gc_mark(__gc_object.stack_start[pthread_self() % MAX_THR], &tmp);
     for (gc_list_t *e = __gc_object.globals; e; e = e->next) {
         gc_mark((uint8_t *) (e->data.start),
                 (uint8_t *) (e->data.start + e->data.size));
@@ -53,4 +55,6 @@ void gc_dump_internals(void)
                    (void *) m->data.start, m->data.size, m->data.marked);
         }
     }
+    uint8_t tmp;
+    gc_mark(__gc_object.stack_start[pthread_self() % 100], &tmp);
 }

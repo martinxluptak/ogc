@@ -1,14 +1,24 @@
+
+#include <stdio.h>
 #include "gc_internal.h"
+#define atomic_inc(x) (__atomic_fetch_add(x, 1, __ATOMIC_SEQ_CST))
+#define atomic_dec(x) (__atomic_fetch_add(x, -1, __ATOMIC_SEQ_CST))
 
 gc_t __gc_object = (gc_t){.ref_count = 0};
+pthread_mutex_t __gc_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void gc_init(void *ptr, size_t limit)
 {
+    uint8_t thr_pos = pthread_self() % MAX_THR;
+    if (__gc_object.stack_start && !__gc_object.stack_start[thr_pos])
+        __gc_object.stack_start[thr_pos] = ptr;
     if (__gc_object.ref_count) {
-        __gc_object.ref_count++;
+        atomic_inc(&__gc_object.ref_count);
         return;
     }
-    __gc_object = (gc_t){.stack_start = ptr,
+
+    pthread_mutex_lock(&__gc_mutex);
+    __gc_object = (gc_t){.stack_start = {NULL},
                          .ptr_map = {NULL},
                          .ptr_num = 0,
                          .ref_count = 1,
@@ -16,6 +26,9 @@ void gc_init(void *ptr, size_t limit)
                          .min = UINTPTR_MAX,
                          .max = 0,
                          .globals = NULL};
+    pthread_mutex_unlock(&__gc_mutex);
+    if (!__gc_object.stack_start[thr_pos])
+        __gc_object.stack_start[thr_pos] = ptr;
 }
 
 static inline void swap_ptr(uint8_t **a, uint8_t **b)
@@ -67,9 +80,9 @@ void gc_run(void)
 
 void gc_destroy(void)
 {
-    __gc_object.ref_count--;
-    if (__gc_object.ref_count <= 0) {
-        __gc_object.ref_count = 0;
+    atomic_dec(&__gc_object.ref_count);
+    if (!__gc_object.ref_count) {
+        pthread_mutex_lock(&__gc_mutex);
         for (int i = -1; ++i < PTR_MAP_SIZE;) {
             gc_list_t *m = __gc_object.ptr_map[i];
             while (m) {
@@ -80,5 +93,6 @@ void gc_destroy(void)
             }
             __gc_object.ptr_map[i] = 0;
         }
+        pthread_mutex_unlock(&__gc_mutex);
     }
 }
