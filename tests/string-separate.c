@@ -5,6 +5,13 @@
 
 #define IS_DEL(c, d) (c == d)
 
+static inline char *my_strdup(char *s){
+	    size_t size = strlen(s);
+	    char *dup = gc_alloc(sizeof(char) * (size + 1));
+	    strcpy(dup, s);
+	    return dup;
+}
+
 static int count_words(char *s, char delimiter)
 {
     int i = -1, words = 0;
@@ -58,6 +65,11 @@ int main(int argc, char *argv[])
 
     char **sep = my_strsep("hello,world", ',');
     assert(sep);
+
+    char str1[] = "1234567890";
+    char * str2 = my_strdup(str1);
+
+    printf("%s, %s\n", str1, str2);
 
     printf("%s\n", sep[0]);
     printf("%s\n", sep[1]);
